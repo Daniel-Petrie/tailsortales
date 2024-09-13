@@ -43,7 +43,7 @@ const App = () => {
 
   return (
     <div className="container">
-      <h1>TailsOrTales Party Game</h1>
+      <h1>Tails Or Tales</h1>
       {isConnected ? (
         lobbyId ? (
           <GameContainer
