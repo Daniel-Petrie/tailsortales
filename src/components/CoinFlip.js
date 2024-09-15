@@ -5,23 +5,26 @@ const CoinFlip = ({ onComplete }) => {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
+    const flipDuration = 3000; // 3 seconds
     const flipTimer = setTimeout(() => {
       const flipResult = Math.random() < 0.5;
       setResult(flipResult);
       setIsFlipping(false);
       onComplete(flipResult);
-    }, 3000);
+    }, flipDuration);
 
     return () => clearTimeout(flipTimer);
   }, [onComplete]);
 
   return (
     <div className="coin-flip">
-      {isFlipping ? (
-        <div className="coin spinning"></div>
-      ) : (
+      <div className={`coin ${isFlipping ? 'flipping' : ''}`}>
+        <div className="side heads"></div>
+        <div className="side tails"></div>
+      </div>
+      {!isFlipping && (
         <p className="coin-result">
-          {result ? 'Heads' : 'Tails'}
+          {result ? 'Heads: The answer is revealed!' : 'Tails: The answer remains a mystery!'}
         </p>
       )}
     </div>

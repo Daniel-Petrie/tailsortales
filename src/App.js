@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import GameContainer from './components/GameContainer';
 import AvatarSelector from './components/AvatarSelector';
 import useSocket from './hooks/useSocket';
@@ -14,14 +14,15 @@ const App = () => {
     question,
     answer,
     isAnswerRevealed,
+    coinFlipResult,
     error,
     createLobby,
     joinLobby,
     submitQuestion,
     submitAnswer,
-    flipCoin,
+    startGame,
     startNextRound,
-    socketId // Make sure useSocket is returning this
+    socketId
   } = useSocket();
 
   const [newLobbyName, setNewLobbyName] = useState('');
@@ -42,26 +43,32 @@ const App = () => {
   };
 
   return (
-    <div className="container">
+    <div className="app-container">
       <h1>Tails Or Tales</h1>
       {isConnected ? (
         lobbyId ? (
-          <GameContainer
-            players={players}
-            lobbyId={lobbyId}
-            lobbyName={lobbyName}
-            currentRound={currentRound}
-            question={question}
-            answer={answer}
-            isAnswerRevealed={isAnswerRevealed}
-            submitQuestion={submitQuestion}
-            submitAnswer={submitAnswer}
-            flipCoin={flipCoin}
-            startNextRound={startNextRound}
-            currentPlayerId={socketId} // Pass the socketId as currentPlayerId
-          />
+          <>
+            <div className="lobby-info">
+              <h2>Lobby: {lobbyName}</h2>
+              <p>ID: {lobbyId}</p>
+            </div>
+            <GameContainer
+              players={players}
+              currentRound={currentRound}
+              question={question}
+              answer={answer}
+              isAnswerRevealed={isAnswerRevealed}
+              coinFlipResult={coinFlipResult}
+              submitQuestion={submitQuestion}
+              submitAnswer={submitAnswer}
+              startGame={startGame}
+              startNextRound={startNextRound}
+              currentPlayerId={socketId}
+              isHost={players[0]?.id === socketId}
+            />
+          </>
         ) : (
-          <div className="game-content">
+          <div className="lobby-creation">
             <div className="input-group">
               <label htmlFor="playerName">Your Name:</label>
               <input

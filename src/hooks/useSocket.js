@@ -65,12 +65,9 @@ const useSocket = () => {
       setAnswer(answer);
     });
 
-    socketRef.current.on('coinResult', ({ result, answer }) => {
+    socketRef.current.on('coinResult', ({ result }) => {
       console.log(`Coin flip result: ${result ? 'Heads' : 'Tails'}`);
       setCoinFlipResult(result);
-      if (result) {
-        setAnswer(answer);
-      }
       setIsAnswerRevealed(true);
     });
 
@@ -94,29 +91,40 @@ const useSocket = () => {
     socketRef.current.emit('joinLobby', { lobbyId, playerName, playerColor });
   }, []);
 
-  const startRound = useCallback(() => {
-    console.log('Starting new round');
-    socketRef.current.emit('startRound', lobbyId);
+  const startGame = useCallback(() => {
+    console.log('Starting game');
+    if (lobbyId) {
+      socketRef.current.emit('startGame', lobbyId);
+    } else {
+      console.error('Cannot start game: lobbyId is null');
+    }
   }, [lobbyId]);
 
   const submitQuestion = useCallback((question) => {
     console.log('Submitting question');
-    socketRef.current.emit('submitQuestion', { lobbyId, question });
+    if (lobbyId) {
+      socketRef.current.emit('submitQuestion', { lobbyId, question });
+    } else {
+      console.error('Cannot submit question: lobbyId is null');
+    }
   }, [lobbyId]);
 
   const submitAnswer = useCallback((answer) => {
     console.log('Submitting answer');
-    socketRef.current.emit('submitAnswer', { lobbyId, answer });
-  }, [lobbyId]);
-
-  const flipCoin = useCallback(() => {
-    console.log('Flipping coin');
-    socketRef.current.emit('flipCoin', lobbyId);
+    if (lobbyId) {
+      socketRef.current.emit('submitAnswer', { lobbyId, answer });
+    } else {
+      console.error('Cannot submit answer: lobbyId is null');
+    }
   }, [lobbyId]);
 
   const startNextRound = useCallback(() => {
     console.log('Starting next round');
-    socketRef.current.emit('startNextRound', lobbyId);
+    if (lobbyId) {
+      socketRef.current.emit('startNextRound', lobbyId);
+    } else {
+      console.error('Cannot start next round: lobbyId is null');
+    }
   }, [lobbyId]);
 
   return {
@@ -133,10 +141,9 @@ const useSocket = () => {
     socketId: socketRef.current?.id,
     createLobby,
     joinLobby,
-    startRound,
+    startGame,
     submitQuestion,
     submitAnswer,
-    flipCoin,
     startNextRound
   };
 };

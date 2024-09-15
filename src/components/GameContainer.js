@@ -5,8 +5,6 @@ import FrogAvatar from './FrogAvatar';
 
 const GameContainer = ({
   players,
-  lobbyId,
-  lobbyName,
   currentRound,
   question,
   answer,
@@ -14,41 +12,35 @@ const GameContainer = ({
   coinFlipResult,
   submitQuestion,
   submitAnswer,
-  flipCoin,
+  startGame,
+  startNextRound,
   currentPlayerId,
-  startNextRound
+  isHost
 }) => {
   const [inputValue, setInputValue] = useState('');
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [showCoinFlipResult, setShowCoinFlipResult] = useState(false);
 
   useEffect(() => {
+    if (currentRound && !gameStarted) {
+      setGameStarted(true);
+    }
+  }, [currentRound, gameStarted]);
+
+  useEffect(() => {
+    let timer;
     if (isAnswerRevealed) {
-      setShowCoinFlipResult(true);
-      // Delay showing the answer for a dramatic effect
-      const answerTimer = setTimeout(() => setShowAnswer(true), 2000);
-      
-      // Start next round after a longer delay
-      const nextRoundTimer = setTimeout(() => {
+      setShowAnswer(true);
+      timer = setTimeout(() => {
         setShowAnswer(false);
-        setShowCoinFlipResult(false);
         startNextRound();
       }, 10000);
-
-      return () => {
-        clearTimeout(answerTimer);
-        clearTimeout(nextRoundTimer);
-      };
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isAnswerRevealed, startNextRound]);
-
-  useEffect(() => {
-    // Reset states when a new round starts
-    if (currentRound) {
-      setShowAnswer(false);
-      setShowCoinFlipResult(false);
-    }
-  }, [currentRound]);
 
   const handleSubmit = () => {
     if (currentRound?.questioner.id === currentPlayerId && !question) {
@@ -60,52 +52,81 @@ const GameContainer = ({
     }
   };
 
+  const handleCoinFlip = () => {
+    setIsFlipping(true);
+    setTimeout(() => {
+      setIsFlipping(false);
+    }, 3000);
+  };
+
+  const handleStartGame = () => {
+    if (isHost && players.length >= 2) {
+      startGame();
+    }
+  };
+
   const renderGameContent = () => {
-    const isQuestioner = currentRound && currentRound.questioner.id === currentPlayerId;
-    const isAnswerer = currentRound && currentRound.answerer.id === currentPlayerId;
+    if (!gameStarted) {
+      return (
+        <div className="waiting-room">
+          <h2>Waiting for players...</h2>
+          <ul className="player-list">
+            {players.map((player) => (
+              <li key={player.id}>
+                <FrogAvatar color={player.color} size={40} />
+                <span>{player.name}</span>
+              </li>
+            ))}
+          </ul>
+          {isHost && players.length >= 2 && (
+            <button onClick={handleStartGame} className="start-game-button">
+              Start Game
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (!currentRound) {
+      return <p>Waiting for the next round to start...</p>;
+    }
+
+    const isQuestioner = currentRound.questioner.id === currentPlayerId;
+    const isAnswerer = currentRound.answerer.id === currentPlayerId;
 
     return (
       <div className="game-phase">
-        {currentRound ? (
-          <>
-            <div className="players-info">
-              <div className="avatar-container">
-                <FrogAvatar color={currentRound.questioner.color} size={100} seed={currentRound.questioner.id} />
-                <p>{currentRound.questioner.name} is asking</p>
-              </div>
-              <div className="avatar-container">
-                <FrogAvatar color={currentRound.answerer.color} size={100} seed={currentRound.answerer.id} />
-                <p>{currentRound.answerer.name} is answering</p>
-              </div>
+        <div className="players-info">
+          <div className="avatar-container">
+            <FrogAvatar color={currentRound.questioner.color} size={60} />
+            <p>{currentRound.questioner.name} is asking</p>
+          </div>
+          <div className="avatar-container">
+            <FrogAvatar color={currentRound.answerer.color} size={60} />
+            <p>{currentRound.answerer.name} is answering</p>
+          </div>
+        </div>
+        
+        <div className="game-content">
+          {!question && isQuestioner && (
+            <div className="input-section">
+              <p>You are the questioner. Please ask a question:</p>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Enter your question"
+              />
+              <button onClick={handleSubmit}>Submit Question</button>
+              <Timer duration={30} onComplete={handleSubmit} />
             </div>
-            
-            {!question && (
-              isQuestioner ? (
-                <div className="input-section">
-                  <p>You are the questioner. Please ask a question:</p>
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Enter your question"
-                  />
-                  <button onClick={handleSubmit}>Submit Question</button>
-                  <Timer duration={30} onComplete={handleSubmit} />
-                </div>
-              ) : (
-                <p>Waiting for {currentRound.questioner.name} to ask a question...</p>
-              )
-            )}
-            
-            {question && (
-              <div className="question-display">
-                <h3>Question:</h3>
-                <p className="question-text">{question}</p>
-              </div>
-            )}
-            
-            {question && !answer && (
-              isAnswerer ? (
+          )}
+          
+          {question && (
+            <div className="question-display">
+              <h3>Question:</h3>
+              <p className="question-text">{question}</p>
+              {!answer && isAnswerer && (
                 <div className="input-section">
                   <p>You are the answerer. Please provide an answer:</p>
                   <input
@@ -117,62 +138,39 @@ const GameContainer = ({
                   <button onClick={handleSubmit}>Submit Answer</button>
                   <Timer duration={30} onComplete={handleSubmit} />
                 </div>
+              )}
+            </div>
+          )}
+          
+          {answer && !isAnswerRevealed && (
+            <div className="coin-flip-section">
+              <p>The answer has been submitted. Flipping the coin...</p>
+              <CoinFlip onComplete={handleCoinFlip} />
+            </div>
+          )}
+          
+          {showAnswer && (
+            <div className="answer-reveal">
+              <h3>Result:</h3>
+              {coinFlipResult ? (
+                <>
+                  <p className="coin-result">Heads: The answer is revealed!</p>
+                  <p className="answer-text">{answer}</p>
+                </>
               ) : (
-                <p>Waiting for {currentRound.answerer.name} to answer...</p>
-              )
-            )}
-            
-            {answer && !isAnswerRevealed && (
-              <CoinFlip onComplete={flipCoin} />
-            )}
-            
-            {showCoinFlipResult && coinFlipResult !== null && (
-              <div className="coin-flip-result">
-                <p>
-                  {coinFlipResult
-                    ? "Heads: The coin landed on heads! The answer is:"
-                    : "Tails: The coin landed on tails, this answer will be buried forever..."}
-                </p>
-              </div>
-            )}
-            
-            {showAnswer && coinFlipResult && (
-              <div className={`answer-reveal ${showAnswer ? 'show' : ''}`}>
-                <h3>Answer:</h3>
-                <p className="answer-text">{answer}</p>
-                <p>Next round starting soon...</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <p>Waiting for the next round to start...</p>
-        )}
+                <p className="coin-result">Tails: The answer is buried forever...</p>
+              )}
+              <p>Next round starting in 10 seconds...</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   return (
     <div className="game-container">
-      <div className="player-list">
-        <div className="lobby-info">
-          <h2>Lobby: {lobbyName}</h2>
-          <p>ID: {lobbyId}</p>
-        </div>
-        <ul>
-          {players.map((player) => (
-            <li key={player.id} className={player.id === currentPlayerId ? 'current-player' : ''}>
-              <FrogAvatar color={player.color} size={50} seed={player.id} />
-              <span>{player.name}</span>
-              {currentRound && currentRound.questioner.id === player.id && ' (Questioner)'}
-              {currentRound && currentRound.answerer.id === player.id && ' (Answerer)'}
-              {player.id === currentPlayerId && ' (You)'}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="game-content">
-        {renderGameContent()}
-      </div>
+      {renderGameContent()}
     </div>
   );
 };
